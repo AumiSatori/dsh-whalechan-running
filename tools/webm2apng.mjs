@@ -203,7 +203,7 @@ const [, , src, outPath, ...flags] = process.argv;
 const opt = (n, d) => { const i = flags.indexOf("--" + n); return i >= 0 ? Number(flags[i + 1]) : d; };
 const strOpt = (n) => { const i = flags.indexOf("--" + n); return i >= 0 ? flags[i + 1] : null; };
 if (!src || !outPath) {
-  console.log("用法: node webm2apng.mjs <in.webm> <out.apng> [--fps 6] [--size 64] [--crop 290] [--cx 180] [--cy 192] [--t1 64] [--sharpen 0.55] [--preview dir] [--still out.png]");
+  console.log("用法: node webm2apng.mjs <in.webm> <out.apng> [--fps 6] [--speed 1] [--size 64] [--crop 290] [--cx 180] [--cy 192] [--t1 64] [--sharpen 0.55] [--preview dir] [--still out.png]");
   process.exit(1);
 }
 const FPS = opt("fps", 6);
@@ -213,6 +213,7 @@ const CX = opt("cx", 180);
 const CY = opt("cy", 192);
 const T1 = opt("t1", 64);
 const SHARPEN = opt("sharpen", 0.55);
+const SPEED = opt("speed", 1);            // 播放倍速：只改每帧时长，不改帧数（体积不变）
 const preview = strOpt("preview");
 const still = strOpt("still");
 
@@ -221,7 +222,7 @@ const r = spawnSync("ffmpeg", ["-v", "error", "-i", src, "-vf", `fps=${FPS}`, "-
 if (r.status !== 0 || !r.stdout?.length) { console.error("ffmpeg 失败", r.status, r.stderr?.toString().slice(0, 300)); process.exit(1); }
 const fs_ = SW * SH * 4;
 const count = Math.floor(r.stdout.length / fs_);
-const delayMs = Math.round(1000 / FPS);  // APNG delay_num 单位 1/1000 秒（6fps → 167ms）
+const delayMs = Math.max(10, Math.round(1000 / (FPS * (SPEED > 0 ? SPEED : 1))));  // APNG delay_num 单位 1/1000 秒
 
 const cropX = Math.round(CX - CROP / 2), cropY = Math.round(CY - CROP / 2);
 const frames = [];
@@ -250,7 +251,7 @@ for (let i = 1; i < frames.length; i++) {
 parts.push(chunk("IEND", Buffer.alloc(0)));
 const apng = Buffer.concat(parts);
 writeFileSync(outPath, apng);
-console.log(`✅ ${outPath} · ${SIZE}x${SIZE} · ${frames.length}帧 @${FPS}fps · ${apng.length}B · 裁 (${cropX},${cropY})+${CROP}`);
+console.log(`✅ ${outPath} · ${SIZE}x${SIZE} · ${frames.length}帧 @${FPS}fps ×${SPEED}速 (${delayMs}ms/帧, ${(frames.length*delayMs/1000).toFixed(2)}s) · ${apng.length}B · 裁 (${cropX},${cropY})+${CROP}`);
 
 if (still) writeFileSync(still, encodePNG(frames[Math.floor(frames.length * 0.35)], SIZE, SIZE));
 if (preview) {
