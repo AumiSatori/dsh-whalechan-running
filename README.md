@@ -14,15 +14,26 @@
 - 与文字间距可配
 - **随时可关**：配置里 `enabled: false` → 刷新页面立刻恢复原样，不用卸载、不用重启宿主
 
+仓库：<https://github.com/AumiSatori/dsh-whalechan-running>
+
 ## 安装
 
 ```bash
-# 本地开发（link 安装，改代码后重启 DSH 生效）
-dsh plugin --profile desktop add link:D:/workSpace/dsh-workspace/tools/dsh-whalechan-running
+# 从 GitHub 装（tarball，推荐）
+dsh plugin --profile desktop add \
+  https://github.com/AumiSatori/dsh-whalechan-running/archive/refs/heads/main.tar.gz
 
-# 或从 GitHub / npm
-dsh plugin --profile desktop add dsh-whalechan-running
+# 本地开发（link 安装，改代码后重启 DSH 生效）
+dsh plugin --profile desktop add link:<本目录绝对路径>
 ```
+
+卸载：
+
+```bash
+dsh plugin --profile desktop remove dsh-whalechan-running
+```
+
+> 只想临时关掉、不想卸载？把配置里 `enabled` 改成 `false`，刷新页面即可。
 
 > ⚠️ 插件靠 `webserver/index-inject` 推送注入行，而宿主**只在启动时收集一次**注入表。
 > 所以装完/升级完必须**重启一次 DSH**。之后再改配置就不用重启了。
@@ -116,6 +127,15 @@ curl -X POST .../dsh-whalechan/config.json -d '{"enabled":false}'
 | `GET /dsh-whalechan/asset` | 动图字节流（带 ETag，跟随文件 mtime） |
 
 全部只允许回环地址访问；`Sec-Fetch-Site: cross-site` 一律 403。确需远端访问可设 `DSH_WHALECHAN_TRUSTED_HOSTS=host1,host2`。
+
+## 自测
+
+不依赖 DSH 进程，用 mock 的 `root` / `webServer` 跑一遍插件半区（注入行、三条路由、鉴权、dispose）：
+
+```bash
+node selftest.mjs
+# ✅ 通过 21 / 失败 0
+```
 
 ## 素材来源
 
