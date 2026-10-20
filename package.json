@@ -1,0 +1,32 @@
+{
+  "name": "dsh-whalechan-running",
+  "version": "0.1.0",
+  "description": "把 DSH 聊天界面「深度求索中」旁边那条鲸鱼尾巴剪影，换成可随时更换的彩色动图（默认鲸鱼娘），图标尺寸与动图路径都走配置文件，插件停用即恢复原样",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "whale",
+    "whalechan",
+    "apng",
+    "theme"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "icon": "./assets/icon.png",
+  "files": [
+    "lib",
+    "assets",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
+}

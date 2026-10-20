@@ -1,0 +1,16 @@
+# ============================================================================
+# dsh-whalechan-running —— DSH bundle patch
+# ============================================================================
+# 挂载声明。DSH 启动时按 bundle 层栈叠加各插件 patch，本文件把插件插入
+# Web profile 的配置树；插件本体通过 webserver/index-inject 往页面推注入行。
+#
+# 安装（本地开发）：
+#   dsh plugin --profile desktop add link:<本目录绝对路径>
+# 停用：
+#   dsh plugin --profile desktop remove dsh-whalechan-running
+# 或把配置里 enabled 改成 false（刷新页面即恢复原样，无需重启）
+# ============================================================================
+
+- insert:
+    - id: dsh-whalechan-running
+      name: dsh-whalechan-running
