@@ -221,7 +221,7 @@ const r = spawnSync("ffmpeg", ["-v", "error", "-i", src, "-vf", `fps=${FPS}`, "-
 if (r.status !== 0 || !r.stdout?.length) { console.error("ffmpeg 失败", r.status, r.stderr?.toString().slice(0, 300)); process.exit(1); }
 const fs_ = SW * SH * 4;
 const count = Math.floor(r.stdout.length / fs_);
-const delayCs = Math.round(100 / FPS);   // APNG delay 单位 1/100 秒
+const delayMs = Math.round(1000 / FPS);  // APNG delay_num 单位 1/1000 秒（6fps → 167ms）
 
 const cropX = Math.round(CX - CROP / 2), cropY = Math.round(CY - CROP / 2);
 const frames = [];
@@ -239,11 +239,11 @@ if (!frames.length) { console.error("无帧"); process.exit(1); }
 const parts = [Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), ihdr(SIZE, SIZE)];
 const actl = Buffer.alloc(8); actl.writeUInt32BE(frames.length, 0); actl.writeUInt32BE(0, 4);
 parts.push(chunk("acTL", actl));
-parts.push(fctl(0, SIZE, SIZE, delayCs, 1000));
+parts.push(fctl(0, SIZE, SIZE, delayMs, 1000));
 parts.push(chunk("IDAT", idat(frames[0], SIZE, SIZE)));
 let seq = 1;
 for (let i = 1; i < frames.length; i++) {
-  parts.push(fctl(seq++, SIZE, SIZE, delayCs, 1000));
+  parts.push(fctl(seq++, SIZE, SIZE, delayMs, 1000));
   const hdr = Buffer.alloc(4); hdr.writeUInt32BE(seq++, 0);
   parts.push(chunk("fdAT", Buffer.concat([hdr, idat(frames[i], SIZE, SIZE)])));
 }
