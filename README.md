@@ -9,7 +9,7 @@
 
 ## 效果
 
-- 图标从 14px 剪影 → 默认 **32px 彩色动图**（尺寸可配）
+- 图标从 14px 剪影 → 默认 **32px 彩色动图**（尺寸可配）；素材按 **2× 密度**出图（64×64），高清屏上是下采样，不会被浏览器放糊
 - 动画正常播放（APNG / GIF 均可）
 - 与文字间距可配
 - **随时可关**：配置里 `enabled: false` → 刷新页面立刻恢复原样，不用卸载、不用重启宿主
@@ -87,7 +87,7 @@ curl -X POST .../dsh-whalechan/config.json -d '{"enabled":false}'
 
 `.apng` `.png` `.gif` `.webp` `.jpg` `.jpeg` `.bmp` `.avif`
 
-- 想更清晰：换 48px / 64px 的 APNG，同时把 `size` 调大
+- 默认素材已是 2× 密度（64×64 图显示在 32px 格子里）；仍嫌不够就出 96px 的图，`size` 不用动，浏览器自动下采样
 - 想更省：抽帧（每 2 帧取 1）或缩到 24px
 - 透明背景最好（`background` 是透明的，图标会被塞进行内布局）
 
@@ -144,8 +144,26 @@ node selftest.mjs
 1. 解析 `.ani`（RIFF/ACON，72 个 `icon` chunk，每个是 256×256 32bpp ICO）
 2. 逐帧剔除左上角的鼠标箭头（连通域分析，按 bbox 窗口判定而不是面积——箭头描边会被拆成多块）
 3. 取所有帧的人物并集 bbox 做正方形裁切（保证动画过程不抖）
-4. 面积平均缩放（带 premultiply）到 32×32
-5. 打包成 APNG（72 帧，帧延迟取自 ANI 的 `rate` chunk）
+4. 72 帧均匀抽成 30 帧；帧延迟按原 `rate` chunk **累加**，所以动画速度不变、体积少一半
+5. **Lanczos3 缩放**到 64×64 —— scale-aware：下采样时按缩小比展宽滤波支撑，等价于先低通再抽取，抑制混叠
+6. **USM 锐化**：在 premultiplied 空间做，避免透明边缘串色
+7. 打包成 APNG
+
+> 第一版是单步面积平均到 32×32。1.5× 屏上那张图被浏览器上采样到 48 物理像素，糊是必然的。
+> 换成 64×64（2× 密度）+ Lanczos3 + USM 之后，**同样 32px 的显示尺寸**下，发丝、鲸鱼耳、笔记本这些细节才看得出来。
+
+自制素材（换成别的 `.ani` 或改尺寸/帧数）需要仓库里的 `tools/make-apng.mjs`：
+
+```bash
+# 默认：64×64、30 帧、USM 0.6
+node tools/make-apng.mjs <file.ani> out.apng
+
+# 自定义
+node tools/make-apng.mjs Working.ani whalechan.apng \
+  --size 32 --scale 2 --frames 30 --sharpen 0.6 --icon icon.png
+```
+
+参数：`--size` 显示边长(pixel-at-1x) · `--scale` 密度倍数（输出 = size×scale）· `--frames` 抽帧数 · `--sharpen` USM 强度（0 关）· `--preview` 导出预览帧 · `--icon` 导出一张静帧 PNG。
 
 素材版权归原作者所有；本仓库仅为个人主题替换用途分发。
 
