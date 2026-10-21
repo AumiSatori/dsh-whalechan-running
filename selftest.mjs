@@ -91,7 +91,7 @@ check('config.json 200', cfg.code === 200)
 const cfgObj = JSON.parse(cfg.body.toString('utf8'))
 check('config 有 enabled/size/version', 'enabled' in cfgObj && 'size' in cfgObj && 'version' in cfgObj, JSON.stringify(cfgObj))
 check('config 有池字段', 'poolCount' in cfgObj && 'random' in cfgObj && 'rotate' in cfgObj, JSON.stringify(cfgObj))
-check('默认走内置动图', cfgObj.builtin === true)
+check('默认走内置池（无单图）', cfgObj.builtin === true && cfgObj.single === false, JSON.stringify({ builtin: cfgObj.builtin, single: cfgObj.single }))
 
 // 池清单
 const pool = await call('/dsh-whalechan/pool.json')
@@ -104,12 +104,9 @@ check('池 version 非空', typeof poolObj.version === 'string' && poolObj.versi
 check('默认 random=true', poolObj.random === true)
 check('默认 rotate=0', poolObj.rotate === 0)
 
-// 单图路由（旧的 src/内置路径）
+// 单图路由：没配 src 时不该再吐任何内置单图（包里已不含光标主题素材）
 const asset = await call('/dsh-whalechan/asset')
-check('asset 200', asset.code === 200)
-check('asset 是图片', String(asset.headers['content-type']).startsWith('image/'), asset.headers['content-type'])
-check('asset 是 APNG（acTL 块存在）', asset.body.includes('acTL'))
-check('asset 体积合理', asset.body.length > 50000, asset.body.length + 'B')
+check('未配 src 时 asset 404（不再回落到内置单图）', asset.code === 404, String(asset.code))
 
 // 池内指定文件
 const firstName = poolObj.files[0]

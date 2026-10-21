@@ -100,8 +100,16 @@
     state.pool = pool
     state.enabled = !!(pool && pool.enabled)
     if (!state.enabled) { removeStyle(); return }
-    if (!state.name) state.name = pickName(pool, null)
-    state.url = assetUrl(state.name)
+    if (pool && pool.useSrc) {
+      // 单图模式：配置里的 src 就是唯一来源
+      state.name = null
+      state.url = assetUrl(null)
+    } else {
+      if (!state.name) state.name = pickName(pool, null)
+      // 池是空的、也没有可用的单图 → 什么都不做，界面保持宿主原样（不会有裂图）
+      if (!state.name) { removeStyle(); return }
+      state.url = assetUrl(state.name)
+    }
     warm(state.url)
     applyCss(buildCss(
       Math.round(pool.size || 32),
@@ -145,8 +153,8 @@
       var prevCount = state.pool && state.pool.count
       // 池内容变了（加了/删了文件、改了池目录）→ 重新挑一张
       if (prevVersion && (pool.version !== prevVersion || pool.count !== prevCount)) state.name = null
-      // 关掉随机时不保留上次的随机结果
-      if (!pool.random) state.name = (pool.files && pool.files[0]) || null
+      // 关掉随机时不保留上次的随机结果（单图模式不受影响）
+      if (!pool.useSrc && !pool.random) state.name = (pool.files && pool.files[0]) || null
       render(pool)
       armRotate()
     }).catch(function (err) {

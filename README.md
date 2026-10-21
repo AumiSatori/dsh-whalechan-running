@@ -2,10 +2,16 @@
 
 把 DeepSeek Harness 聊天界面里「**深度求索中，用时 58 分 40 秒 ···**」旁边那条**鲸鱼尾巴剪影**，换成一张**真彩动图**。
 
-默认内置 **50 张**鲸鱼娘（女仆鲸鱼）动作 APNG 组成的**随机池**——东张西望、偷吃 Token、原地敲桌面、认真工作、摸鱼被抓、鲸鱼吐泡泡……每次「深度求索」都随机换一个动作。也可以指向你电脑上任意一个目录当池子，或者单独指定一张动图，随时换、随时关。
+默认内置 **50 个**鲸鱼娘（女仆鲸鱼）动作 APNG 组成的**随机池**——东张西望、偷吃 Token、原地敲桌面、认真工作、摸鱼被抓、鲸鱼吐泡泡……每次「深度求索」都随机换一个动作。也可以指向你电脑上任意一个目录当池子，或者单独指定一张动图，随时换、随时关。
 
 > 宿主原来那条图标是纯色剪影：CSS 里 `background:currentColor` + `mask:url(data:image/png;base64,…)`，只取 alpha 当遮罩，所以永远是「跟随文字颜色的一团影子」。
 > 本插件把 `mask` 关掉、`background` 换成图片本身，并同步放大 14px 的容器，于是露出真身。
+
+## 效果预览
+
+![深度求索中，旁边的鲸鱼娘动图](assets/sample.gif)
+
+> 上面这张是 **DSH 桌面版实机截的**（372×76 原尺寸、12fps、6 秒、循环播放），不是合成图：左边会动的是插件换上去的鲸鱼娘，右边是宿主原本的「深度求索中，用时 …」。
 
 ## 效果
 
@@ -59,15 +65,15 @@ dsh plugin --profile desktop remove dsh-whalechan-running
 | 字段 | 默认 | 说明 |
 | --- | --- | --- |
 | `enabled` | `true` | `false` = 摘掉样式，恢复宿主原样（刷新页面生效） |
-| `src` | `""` | 单图模式：动图**绝对路径**。填了就优先用它、忽略整个池；路径失效自动回落内置 |
-| `pool` | `""` | 池目录**绝对路径**；留空 = 插件自带 `assets/pool/`（50 张）。丢进目录的图片自动进池 |
+| `src` | `""` | 单图模式：动图**绝对路径**。填了且文件存在就只用它、忽略整个池；路径失效自动回落到池 |
+| `pool` | `""` | 池目录**绝对路径**；留空 = 插件自带 `assets/pool/`（50 张，MIT 素材）。丢进目录的图片自动进池 |
 | `random` | `true` | `true` = 随机挑；`false` = 固定池里第一张（按文件名排序） |
 | `rotate` | `0` | 秒。`0` = 每次图标出现时换一张；`>0` = 另外每 N 秒无条件换一张（0–3600） |
 | `size` | `32` | 图标显示尺寸（px），12–96 |
 | `gap` | `6` | 图标与文字的间距（px），0–40 |
 | `opacity` | `1` | 不透明度，0.1–1（想让它更含蓄就调低） |
 
-**改完立刻生效**，页面侧每 10 秒拉一次配置，版本一变就重刷样式；也可以手动：
+**改完立刻生效**，页面侧每 10 秒拉一次池清单，版本一变就重刷样式；也可以手动：
 
 ```js
 window.__dshWhalechanRunning.reload()   // 重读配置
@@ -102,7 +108,7 @@ cp 你的动图*.apng D:/dsh-whale/
 { "src": "D:/pics/whale-生气.apng" }
 ```
 
-`src` 优先级高于池；路径写错会自动回落到内置池，不会白屏。
+`src` 优先级高于池；路径写错会自动回落到池，不会白屏。
 
 > 池目录里的文件名会原样出现在挑图逻辑里，所以可以按文件名排序来控制"固定用哪张"（`random: false` 时取排序后第一张）。中文名没问题。
 
@@ -157,33 +163,37 @@ curl -X POST .../dsh-whalechan/config.json -d '{"enabled":false}'
 
 **没有任何文件被修改**：不动 `app.asar`、不改宿主 CSS、不 patch 宿主代码。插件停用/卸载后界面 100% 回原样。
 
-### 四条路由
+### 路由一览
 
 | 路由 | 说明 |
 | --- | --- |
 | `GET /dsh-whalechan/running.js` | 页面侧脚本 |
-| `GET /dsh-whalechan/config.json` | 当前配置 + 池信息 + 资源版本号 |
+| `GET /dsh-whalechan/config.json` | 当前配置 + 池信息（含 `single` / `missing` 两个状态位） |
 | `POST /dsh-whalechan/config.json` | 改配置（只接受回环 Host） |
 | `GET /dsh-whalechan/pool.json` | 池清单（文件名 + 池版本号），页面侧拿它随机挑图 |
-| `GET /dsh-whalechan/asset` | 单图字节流（`src` 或内置 `whalechan.apng`） |
-| `GET /dsh-whalechan/asset?f=<名字>` | 池内指定文件；只认池目录下的直接子文件，`../` 与非图片扩展名一律 404 |
+| `GET /dsh-whalechan/asset?f=<名字>` | 池内指定文件的字节流（默认玩法走这条） |
+| `GET /dsh-whalechan/asset` | 单图模式：吐 `src` 指向的文件；没配 `src` 就是 404 |
 
-全部只允许回环地址访问；`Sec-Fetch-Site: cross-site` 一律 403。确需远端访问可设 `DSH_WHALECHAN_TRUSTED_HOSTS=host1,host2`。
+`?f=` 只认池目录下的直接子文件，`../` 与非图片扩展名一律 404。全部路由只允许回环地址访问，`Sec-Fetch-Site: cross-site` 一律 403；确需远端访问可设 `DSH_WHALECHAN_TRUSTED_HOSTS=host1,host2`。
 
 ## 自测
 
-不依赖 DSH 进程，用 mock 的 `root` / `webServer` 跑一遍插件半区（注入行、四条路由、池清单、路径穿越防护、鉴权、dispose）：
+不依赖 DSH 进程，用 mock 的 `root` / `webServer` 跑一遍插件半区（注入行、四条路由、池清单、单图模式回落、路径穿越防护、鉴权、dispose）：
 
 ```bash
 node selftest.mjs
-# ✅ 通过 36 / 失败 0
+# ✅ 通过 33 / 失败 0
 ```
 
-## 素材来源
+## 素材来源与授权
 
-### 随机池那 50 张（`assets/pool/`）
+### 代码
 
-来自 **[yanzwzz/dsh-whale-girl-pet](https://github.com/yanzwzz/dsh-whale-girl-pet)（MIT）** 的 `assets/thumb/*.webm` —— 50 个 Q 版鲸鱼娘动作，360×360 / 24fps / VP9。
+MIT，见 [LICENSE](LICENSE)。
+
+### 内置那 50 张动图（`assets/pool/`）
+
+来自 **[yanzwzz/dsh-whale-girl-pet](https://github.com/yanzwzz/dsh-whale-girl-pet)（MIT）** 的 `assets/thumb/*.webm` —— 50 个 Q 版鲸鱼娘动作，360×360 / 24fps / VP9，再转成本仓库的 APNG。
 
 原始素材**没有 alpha 通道**（`pix_fmt=yuv420p`），角色是纯黑底（`(0,0,0)` 占 67%）。所以转换要做真正的抠图：
 
@@ -195,8 +205,6 @@ node selftest.mjs
 5. Lanczos3 缩到 64×64 + USM 锐化，6fps / 60 帧，单张约 530KB
 6. 打包 APNG（`acTL` + `fcTL` + `fdAT`）
 
-另外把第一版的"敲笔记本电脑"（来自本机光标主题）也保留进池：`原版-敲笔记本电脑.apng`。
-
 工具：`tools/webm2apng.mjs`（纯 Node，除 `ffmpeg` 外无依赖，PNG/APNG 编码器是手写的）
 
 ```bash
@@ -204,38 +212,12 @@ node tools/webm2apng.mjs 认真工作.webm 认真工作.apng \
   --fps 6 --size 64 --crop 290 --cx 180 --cy 192 --sharpen 0.55
 ```
 
-参数：`--fps` 抽帧率 · `--size` 输出边长 · `--crop` 裁切边长 · `--cx/--cy` 裁切中心 · `--t1` 背景亮度阈值 · `--sharpen` USM 强度 · `--preview` 导出预览帧 · `--still` 导出一张静帧。
+参数：`--fps` 抽帧率 · `--size` 输出边长 · `--crop` 裁切边长 · `--cx/--cy` 裁切中心 · `--t1` 背景亮度阈值 · `--sharpen` USM 强度 · `--speed` 播放倍速 · `--preview` 导出预览帧 · `--still` 导出一张静帧。
 
-### 原版那张（`assets/whalechan.apng`）
-
-从本机 Windows 光标主题 `Whalechan_Animated`（Working 状态）提取并处理：
-
-1. 解析 `.ani`（RIFF/ACON，72 个 `icon` chunk，每个是 256×256 32bpp ICO）
-2. 逐帧剔除左上角的鼠标箭头（连通域分析，按 bbox 窗口判定而不是面积——箭头描边会被拆成多块）
-3. 取所有帧的人物并集 bbox 做正方形裁切（保证动画过程不抖）
-4. 72 帧均匀抽成 30 帧；帧延迟按原 `rate` chunk **累加**，所以动画速度不变、体积少一半
-5. **Lanczos3 缩放**到 64×64 —— scale-aware：下采样时按缩小比展宽滤波支撑，等价于先低通再抽取，抑制混叠
-6. **USM 锐化**：在 premultiplied 空间做，避免透明边缘串色
-7. 打包成 APNG
-
-> 第一版是单步面积平均到 32×32。1.5× 屏上那张图被浏览器上采样到 48 物理像素，糊是必然的。
-> 换成 64×64（2× 密度）+ Lanczos3 + USM 之后，**同样 32px 的显示尺寸**下，发丝、鲸鱼耳、笔记本这些细节才看得出来。
-
-自制素材（换成别的 `.ani` 或改尺寸/帧数）需要仓库里的 `tools/make-apng.mjs`：
-
-```bash
-# 默认：64×64、30 帧、USM 0.6
-node tools/make-apng.mjs <file.ani> out.apng
-
-# 自定义
-node tools/make-apng.mjs Working.ani whalechan.apng \
-  --size 32 --scale 2 --frames 30 --sharpen 0.6 --icon icon.png
-```
-
-参数：`--size` 显示边长(pixel-at-1x) · `--scale` 密度倍数（输出 = size×scale）· `--frames` 抽帧数 · `--sharpen` USM 强度（0 关）· `--preview` 导出预览帧 · `--icon` 导出一张静帧 PNG。
-
-素材版权归原作者所有；本仓库仅为个人主题替换用途分发。
+> 早期版本里还有一张从 Windows 光标主题 `Whalechan_Animated` 里抠出来的鲸鱼娘动图（以及配套的 `.ani` 转换工具）。
+> 那个主题的**授权不明确**，所以 v0.3.0 起**已从本仓库彻底移除**，本仓库现在只分发 **MIT 素材**。
+> 想用自己买的/自己做的光标主题，转成 APNG 丢进 `src` 或池目录即可。
 
 ## License
 
-MIT（代码部分）
+MIT（代码）· 内置素材同样 MIT（来源见上，署名留给原作者 yanzwzz）。
