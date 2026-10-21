@@ -30,6 +30,8 @@
     name: null,        // 当前选中的池文件名
     url: '',
     css: '',
+    sprite: null,      // 精灵图参数 {frames, cols, size}
+    frameTimer: null,  // 逐帧定时器
     timer: null,
     rotateTimer: null,
     visible: false,
@@ -40,6 +42,7 @@
     var el = document.getElementById(STYLE_ID)
     if (el && el.parentNode) el.parentNode.removeChild(el)
     state.css = ''
+    state.sprite = null
   }
 
   function assetUrl(name) {
@@ -60,7 +63,43 @@
     return candidates[Math.floor(Math.random() * candidates.length)]
   }
 
-  function buildCss(size, gap, opacity, url) {
+  /** 精灵图逐帧：文件名形如 <名字>__s<帧数>.png（10 列 / 64px 一格）。
+   *  为什么不直接放动画图：iPadOS WebKit 播 APNG/WebP 时会残留上一帧（重叠影子 / 绿帧），
+   *  而 background-position 是纯光栅位移，不过动画解码器，任何浏览器都不可能叠帧。 */
+  function spriteCss(size, gap, opacity, url, name) {
+    var m = /__s(\d+)\.png$/i.exec(name || '')
+    var frames = m ? parseInt(m[1], 10) : 0
+    if (!frames) return ''
+    var cols = 10
+    var rows = Math.ceil(frames / cols)
+    var css = ''
+    css += '[class*="runningIcon"]{'
+    css += 'width:' + size + 'px!important;height:' + size + 'px!important;'
+    css += 'contain:none!important;overflow:visible!important;'
+    css += '}'
+    css += '[class*="runningWhaleAnimated"]{'
+    css += 'display:block!important;will-change:auto!important;'
+    css += '-webkit-mask:none!important;-webkit-mask-image:none!important;'
+    css += 'mask:none!important;mask-image:none!important;'
+    // 只写 background-image / repeat / size，position 交给 stepSprite() 内联写：
+    // 样式表里的 !important 会压住内联值，那一写就把画面钉死在第一帧了。
+    css += 'background-color:transparent!important;'
+    css += 'background-image:url("' + url + '")!important;'
+    css += 'background-repeat:no-repeat!important;'
+    css += 'background-size:' + (cols * 100) + '% ' + (rows * 100) + '%!important;'
+    css += 'width:100%!important;height:100%!important;'
+    css += 'opacity:' + opacity + '!important;'
+    css += '}'
+    state.sprite = { frames: frames, cols: cols, size: size }
+    css += '[class*="runningWhaleStill"]{display:none!important}'
+    css += '[class*="runningContent"]{gap:' + gap + 'px!important}'
+    return css
+  }
+
+  function buildCss(size, gap, opacity, url, name) {
+    var sprite = spriteCss(size, gap, opacity, url, name)
+    if (sprite) return sprite
+    state.sprite = null // 回到普通动图模式时停掉逐帧定时器
     var css = ''
     css += '[class*="runningIcon"]{'
     css += 'width:' + size + 'px!important;height:' + size + 'px!important;'
@@ -68,8 +107,12 @@
     css += '}'
     css += '[class*="runningWhaleAnimated"]{'
     css += 'display:block!important;'
+    // WebKit(iPadOS) 在合成层里播动画图会残留上一帧，关掉宿主给这个元素加的 will-change:transform
+    css += 'will-change:auto!important;'
     css += 'background:transparent url("' + url + '") 50%/100% 100% no-repeat!important;'
-    css += '-webkit-mask:none!important;mask:none!important;'
+    css += 'background-attachment:scroll!important;'
+    css += '-webkit-mask:none!important;-webkit-mask-image:none!important;'
+    css += 'mask:none!important;mask-image:none!important;'
     css += 'width:100%!important;height:100%!important;'
     css += 'opacity:' + opacity + '!important;'
     css += '}'
@@ -115,7 +158,8 @@
       Math.round(pool.size || 32),
       pool.gap == null ? 6 : pool.gap,
       pool.opacity == null ? 1 : pool.opacity,
-      state.url
+      state.url,
+      state.name
     ))
   }
 
@@ -134,7 +178,8 @@
       Math.round(state.pool.size || 32),
       state.pool.gap == null ? 6 : state.pool.gap,
       state.pool.opacity == null ? 1 : state.pool.opacity,
-      state.url
+      state.url,
+      state.name
     ))
   }
 
@@ -198,10 +243,22 @@
     setInterval(check, 1000)
   }
 
+  /** 精灵图逐帧推进（80ms/帧）。宿主重绘把元素换掉也没关系，每次都重新找回来。 */
+  function stepSprite() {
+    var sp = state.sprite
+    if (!sp || !state.enabled || document.hidden) return
+    var el = document.querySelector('[class*="runningWhaleAnimated"]')
+    if (!el) return
+    var k = Math.floor(Date.now() / 80) % sp.frames
+    el.style.backgroundPosition = (-(k % sp.cols) * sp.size) + 'px ' + (-Math.floor(k / sp.cols) * sp.size) + 'px'
+  }
+
   function start() {
     tick()
     if (state.timer) clearInterval(state.timer)
     state.timer = setInterval(tick, POLL_MS)
+    if (state.frameTimer) clearInterval(state.frameTimer)
+    state.frameTimer = setInterval(stepSprite, 80)
     // 页面重新可见时立刻同步一次，别等下一个轮询周期
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) tick()

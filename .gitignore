@@ -1,3 +1,10 @@
 node_modules/
 .DS_Store
 *.log
+
+# 本机媒体池（精灵图/WebP 派生素材，43 MB，按目录扫描进池，不入库）
+assets/pool-sprite/
+assets/pool-webp/
+
+# dsh-ops 同步临时锁
+.dsh-ops-update-*.lock
