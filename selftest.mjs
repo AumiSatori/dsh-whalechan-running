@@ -91,7 +91,9 @@ check('config.json 200', cfg.code === 200)
 const cfgObj = JSON.parse(cfg.body.toString('utf8'))
 check('config 有 enabled/size/version', 'enabled' in cfgObj && 'size' in cfgObj && 'version' in cfgObj, JSON.stringify(cfgObj))
 check('config 有池字段', 'poolCount' in cfgObj && 'random' in cfgObj && 'rotate' in cfgObj, JSON.stringify(cfgObj))
-check('默认走内置池（无单图）', cfgObj.builtin === true && cfgObj.single === false, JSON.stringify({ builtin: cfgObj.builtin, single: cfgObj.single }))
+// 注意：这里读的是本机真实的 ~/.dsh/dsh-whalechan-running.json，所以池可能被配成自定义目录
+// （builtin=false）——断言只压在「没有误配单图」这类与配置无关的点上，别把本机状态写死进测试。
+check('没有误配单图（single/missing 都是 false）', cfgObj.single === false && cfgObj.missing === false, JSON.stringify({ single: cfgObj.single, missing: cfgObj.missing }))
 check('默认 mode=sprite（精灵图，不走动画图解码）', cfgObj.mode === 'sprite', String(cfgObj.mode))
 
 // 池清单
@@ -105,7 +107,7 @@ check('池 version 非空', typeof poolObj.version === 'string' && poolObj.versi
 check('默认 random=true', poolObj.random === true)
 check('默认 rotate=0', poolObj.rotate === 0)
 check('精灵图池的文件名都带 __s<帧数>', poolObj.files.every((n) => /__s\d+\.png$/i.test(n)), poolObj.files.slice(0, 2).join(','))
-check('精灵图池目录是 assets/pool-sprite', /pool-sprite$/.test(String(poolObj.poolDir).replace(/[\\/]+$/, '')), String(poolObj.poolDir))
+check('池目录是精灵图目录（内置 assets/pool-sprite 或自定义池）', /pool-sprite$/.test(String(poolObj.poolDir).replace(/[\\/]+$/, '')) || poolObj.builtin === false, String(poolObj.poolDir))
 
 // 单图路由：没配 src 时不该再吐任何内置单图（包里已不含光标主题素材）
 const asset = await call('/dsh-whalechan/asset')
