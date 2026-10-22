@@ -2,8 +2,8 @@ node_modules/
 .DS_Store
 *.log
 
-# 本机媒体池（精灵图/WebP 派生素材，按目录扫描进池，不入库；精灵图用 tools/apng2sprite.py 生成）
-assets/pool-sprite/
+# 精灵图已入库（自带池默认走它）；WebP 变体仍属本机实验派生素材，不入库
+# 想重做精灵图：python tools/apng2sprite.py assets/pool assets/pool-sprite
 assets/pool-webp/
 
 # dsh-ops 同步临时锁

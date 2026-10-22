@@ -47,6 +47,9 @@ dsh plugin --profile desktop remove dsh-whalechan-running
 > ⚠️ 插件靠 `webserver/index-inject` 推送注入行，而宿主**只在启动时收集一次**注入表。
 > 所以装完/升级完必须**重启一次 DSH**。之后再改配置就不用重启了。
 
+> 📦 仓库体积：50 张 APNG（26 MB）＋ 50 张精灵图（24 MB），tarball 约 50 MB。
+> 只想要轻的，可以不装精灵图那套（删目录即可，自动回落 APNG）。
+
 ## 配置
 
 配置文件：`~/.dsh/dsh-whalechan-running.json`（不存在就用默认值，首次 POST 才落盘）
@@ -95,8 +98,9 @@ window.__dshWhalechanRunning.status()   // 看当前用的是哪张
 默认发的是 `assets/pool-sprite/` 里的**精灵图**（同样 50 个动作，一张大图按 10 列排 60 帧）；
 原始 APNG 留在 `assets/pool/`，配置里写 `"mode": "apng"` 就切回去。
 
-> 精灵图是**派生素材，不入库**（约 24 MB，同一批像素没必要进 git）。本地没有这个目录时
-> 插件会自动回落到 APNG，不会白屏；想补上就 `python tools/apng2sprite.py assets/pool assets/pool-sprite`。
+> 精灵图**随插件一起发**（50 张、约 24 MB，每张是一张 10 列长图）。
+> 嫌体积大可以直接删掉这个目录，插件会自动回落到 APNG，不会白屏；
+> 要重做：`python tools/apng2sprite.py assets/pool assets/pool-sprite`。
 
 **2. 自己搭一个池**
 
