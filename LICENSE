@@ -25,3 +25,12 @@ SOFTWARE.
 Bundled animation assets under assets/pool/ are derived from
 https://github.com/yanzwzz/dsh-whale-girl-pet (MIT), converted to APNG.
 Original character art belongs to its respective authors.
+
+SCOPE NOTE: the MIT grant above covers this repository's code and the bundled
+assets as released by their licensor. It does NOT grant rights to the character
+design itself: the "DeepSeek girl / blue-haired whale maid" design lineage
+traces back to an original character released under CC BY-NC-SA 4.0
+(attribution required, non-commercial, share-alike), and the "DeepSeek" name
+and whale logo are trademarks of DeepSeek. This project is not affiliated with
+or endorsed by DeepSeek. Recommended use: personal, non-commercial.
+See the "使用范围与免责" section in README.md for details.
