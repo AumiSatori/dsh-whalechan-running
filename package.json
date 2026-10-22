@@ -1,7 +1,7 @@
 {
   "name": "dsh-whalechan-running",
-  "version": "0.3.1",
-  "description": "把 DSH 聊天界面「深度求索中」旁边那条鲸鱼尾巴剪影，换成会随机换动作的彩色动图（内置 50 个鲸鱼娘动作池，MIT 素材，也可指向任意目录当池子）；尺寸、池路径、随机方式都走配置文件，插件停用即恢复原样",
+  "version": "0.4.0",
+  "description": "把 DSH 聊天界面「深度求索中」旁边那条鲸鱼尾巴剪影，换成会随机换动作的彩色动图（内置 50 个鲸鱼娘动作池，默认精灵图逐帧播放、绕开动画图在循环接缝处闪花屏的问题，可切回 APNG；尺寸、池路径、随机方式都走配置文件，插件停用即恢复原样）",
   "keywords": [
     "dsh",
     "dsh-plugin",
@@ -12,7 +12,8 @@
     "theme",
     "pool",
     "random",
-    "webm"
+    "webm",
+    "spritesheet"
   ],
   "type": "module",
   "main": "lib/index.js",

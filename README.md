@@ -56,6 +56,7 @@ dsh plugin --profile desktop remove dsh-whalechan-running
   "enabled": true,
   "src": "",
   "pool": "",
+  "mode": "sprite",
   "random": true,
   "rotate": 0,
   "size": 32,
@@ -68,7 +69,8 @@ dsh plugin --profile desktop remove dsh-whalechan-running
 | --- | --- | --- |
 | `enabled` | `true` | `false` = 摘掉样式，恢复宿主原样（刷新页面生效） |
 | `src` | `""` | 单图模式：动图**绝对路径**。填了且文件存在就只用它、忽略整个池；路径失效自动回落到池 |
-| `pool` | `""` | 池目录**绝对路径**；留空 = 插件自带 `assets/pool/`（50 张，MIT 素材）。丢进目录的图片自动进池 |
+| `pool` | `""` | 池目录**绝对路径**；留空 = 走内置池（见 `mode`）。丢进目录的图片自动进池 |
+| `mode` | `"sprite"` | 内置池用哪一套：`"sprite"` = `assets/pool-sprite/` 的精灵图（**默认，不走动画图解码**；目录不存在时自动回落 APNG）；`"apng"` = `assets/pool/` 的原始 APNG。配了 `pool` 时本项不生效 |
 | `random` | `true` | `true` = 随机挑；`false` = 固定池里第一张（按文件名排序） |
 | `rotate` | `0` | 秒。`0` = 每次图标出现时换一张；`>0` = 另外每 N 秒无条件换一张（0–3600） |
 | `size` | `32` | 图标显示尺寸（px），12–96 |
@@ -89,7 +91,12 @@ window.__dshWhalechanRunning.status()   // 看当前用的是哪张
 
 **1. 用自带的 50 张（默认）**
 
-什么都不用配，50 个动作随机播。想看全部素材：`assets/pool/`。
+什么都不用配，50 个动作随机播。
+默认发的是 `assets/pool-sprite/` 里的**精灵图**（同样 50 个动作，一张大图按 10 列排 60 帧）；
+原始 APNG 留在 `assets/pool/`，配置里写 `"mode": "apng"` 就切回去。
+
+> 精灵图是**派生素材，不入库**（约 24 MB，同一批像素没必要进 git）。本地没有这个目录时
+> 插件会自动回落到 APNG，不会白屏；想补上就 `python tools/apng2sprite.py assets/pool assets/pool-sprite`。
 
 **2. 自己搭一个池**
 
@@ -114,12 +121,15 @@ cp 你的动图*.apng D:/dsh-whale/
 
 > 池目录里的文件名会原样出现在挑图逻辑里，所以可以按文件名排序来控制"固定用哪张"（`random: false` 时取排序后第一张）。中文名没问题。
 
-### 精灵图池：`<名字>__s<帧数>.png`
+### 精灵图：`<名字>__s<帧数>.png`
 
-iPadOS 的 WebKit 在合成层里播 APNG / 动态 WebP 会**残留上一帧**（叠出重影、绿边）。
-把池里的图换成**精灵图**（一张大图按 10 列排好 N 帧）就能绕开这个 bug：
-插件认出文件名末尾的 `__s<帧数>` 后自动切成**逐帧位移**模式（80ms/帧），
-`background-position` 只是纯光栅偏移，不经过动画解码器，任何浏览器都不会叠帧。
+**为什么默认走精灵图**：APNG / 动态 WebP 这类动画图，浏览器在**循环接缝**（播完最后一帧回到第一帧）
+要走「重新解码 + 重新合成」。在合成层里，个别环境会在那一瞬间闪出一帧花屏——
+Windows 桌面版实测过「**背景闪一帧黑白相间的光**，每 4.8 秒（正好一个循环）来一次」；
+iPadOS 的 WebKit 则是**残留上一帧**（叠出重影、绿边），同一个病根。
+
+精灵图＝**一张静态 PNG**（10 列排好 N 帧），插件按 80ms 一步改 `background-position`：
+纯粹的光栅位移，不经过动画图解码器，接缝只是位置跳回第一格，物理上不可能再那样闪。
 
 ```json
 { "pool": "D:/whale-pool-sprite" }
@@ -135,6 +145,8 @@ D:/whale-pool-sprite/
 - 帧数写错会**退回普通动图模式**，不会白屏。
 - 每格边长跟 `size` 配置一致（默认 32，素材按 2× 出图即 64）。
 - 非精灵图文件（没有 `__s` 后缀）照常按动图播，两种可以混在同一个池里。
+- 自己造精灵图：`python tools/apng2sprite.py <apng目录> <输出目录> [--cols 10] [--cell 64]`，
+  内置那 50 张就是这么由 `assets/pool/` 生成的（命名自动带帧数）。
 
 ### 命令行改配置
 
@@ -206,7 +218,7 @@ curl -X POST .../dsh-whalechan/config.json -d '{"enabled":false}'
 
 ```bash
 node selftest.mjs
-# ✅ 通过 33 / 失败 0
+# ✅ 通过 37 / 失败 0
 ```
 
 ## 素材来源与授权
@@ -215,7 +227,10 @@ node selftest.mjs
 
 MIT，见 [LICENSE](LICENSE)。
 
-### 内置那 50 张动图（`assets/pool/`）
+### 内置那 50 张动图（`assets/pool/`，精灵图见 `assets/pool-sprite/`）
+
+> `assets/pool-sprite/*.png` 由 `assets/pool/*.apng` 经 `tools/apng2sprite.py` 生成：
+> 同一批像素、同样 MIT 素材，只是换了播放方式（见上文「精灵图」）。
 
 来自 **[yanzwzz/dsh-whale-girl-pet](https://github.com/yanzwzz/dsh-whale-girl-pet)（MIT）** 的 `assets/thumb/*.webm` —— 50 个 Q 版鲸鱼娘动作，360×360 / 24fps / VP9，再转成本仓库的 APNG。
 

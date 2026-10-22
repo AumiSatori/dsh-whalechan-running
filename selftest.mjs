@@ -92,6 +92,7 @@ const cfgObj = JSON.parse(cfg.body.toString('utf8'))
 check('config 有 enabled/size/version', 'enabled' in cfgObj && 'size' in cfgObj && 'version' in cfgObj, JSON.stringify(cfgObj))
 check('config 有池字段', 'poolCount' in cfgObj && 'random' in cfgObj && 'rotate' in cfgObj, JSON.stringify(cfgObj))
 check('默认走内置池（无单图）', cfgObj.builtin === true && cfgObj.single === false, JSON.stringify({ builtin: cfgObj.builtin, single: cfgObj.single }))
+check('默认 mode=sprite（精灵图，不走动画图解码）', cfgObj.mode === 'sprite', String(cfgObj.mode))
 
 // 池清单
 const pool = await call('/dsh-whalechan/pool.json')
@@ -103,6 +104,8 @@ check('池文件都是图片扩展名', poolObj.files.every((n) => /\.(apng|png|
 check('池 version 非空', typeof poolObj.version === 'string' && poolObj.version !== '0', poolObj.version)
 check('默认 random=true', poolObj.random === true)
 check('默认 rotate=0', poolObj.rotate === 0)
+check('精灵图池的文件名都带 __s<帧数>', poolObj.files.every((n) => /__s\d+\.png$/i.test(n)), poolObj.files.slice(0, 2).join(','))
+check('精灵图池目录是 assets/pool-sprite', /pool-sprite$/.test(String(poolObj.poolDir).replace(/[\\/]+$/, '')), String(poolObj.poolDir))
 
 // 单图路由：没配 src 时不该再吐任何内置单图（包里已不含光标主题素材）
 const asset = await call('/dsh-whalechan/asset')
@@ -111,7 +114,8 @@ check('未配 src 时 asset 404（不再回落到内置单图）', asset.code ==
 // 池内指定文件
 const firstName = poolObj.files[0]
 const one = await call('/dsh-whalechan/asset', { query: 'f=' + encodeURIComponent(firstName) })
-check('池内文件可取 (' + firstName + ')', one.code === 200 && one.body.includes('acTL'), one.code + ' ' + one.body.length + 'B')
+check('池内文件可取 (' + firstName + ')', one.code === 200 && one.body.length > 1000, one.code + ' ' + one.body.length + 'B')
+check('精灵图是静态 PNG（不带 acTL，不进动画图解码管线）', one.body.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) && !one.body.includes('acTL'))
 
 // 路径穿越 / 非图片 / 不存在
 const trav1 = await call('/dsh-whalechan/asset', { query: 'f=' + encodeURIComponent('../lib/index.js') })
